@@ -1,4 +1,14 @@
-# Development Notes
+# README
 
-1. A single FAAS /w flask, handling both get/post. Listview and detailview + query.
-2. Should showcase multi-modal search within a single video.
+Vizir aims to demonstrate a multi-modal search model applied to video and its potential usecases.
+This project is split into two components, both of which are deployed as seperate FAAS on GCP, they rely on cloud storage and BigQuery.
+
+```console
+
+	# encodes storage uploaded videos and enables similarity calculations across features
+	/upload-encoder
+
+	# exposes a small webservice that allows semantic search on videos
+	/query-encoder 
+
+```
