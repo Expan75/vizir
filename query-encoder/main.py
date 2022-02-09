@@ -1,5 +1,6 @@
+from flask import render_template
 import functions_framework
 
 @functions_framework.http
-def hello(request):
-	return "hello video encoder!"
+def index(request):
+		return render_template("landing.html", title="Vizir Home")
