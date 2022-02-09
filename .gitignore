@@ -1,6 +1,7 @@
 # secrets/config/examples
 creds*
 examples*
+secret*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
