@@ -20,6 +20,7 @@ BQ_TABLE_SCHEMA = [{
 }]
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
+    """Downloads and parses the specified imagefile in a given bucket"""
     client = storage.Client()
     bucket = client.bucket(bucketname)
     blob = bucket.blob(filename)
@@ -32,11 +33,12 @@ def get_uploaded_image(bucketname: str, filename: str) -> Image:
         exit()
 
 def encode_image(loaded_image: Image) -> ndarray:
+    """Encodes an image """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
     collapsed_image = preprocess(loaded_image).unsqueeze(0).to(device)
     with torch.no_grad():
-        image_features = model.encode_image(collapsed_image)
+        image_features = model.encode_image(collapsed_image).tolist()[0]
     return image_features
 
 def on_upload(event: dict, context):
@@ -51,7 +53,7 @@ def on_upload(event: dict, context):
     encoded_image = encode_image(image)
     
     # assemble output dataframe and ship to BigQuery
-    features = { f'f{index}': feature for index, feature in enumerate(encoded_image.tolist()[0], 1) }
+    features = { f'f{index}': feature for index, feature in enumerate(encoded_image, 1) }
     features['frame_uuid'] = str(uuid())
     features['resource_uuid'] = str(uuid())
     features['timestamp_start'] = datetime.now().isoformat()
