@@ -14,10 +14,14 @@ GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
 GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", './creds/secret.json')
 BQ_DATASET_ID = os.getenv('BQ_DATASET_ID', "vizir_development")
 BQ_TABLE_ID = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
-BQ_TABLE_SCHEMA = [{
-    'name': 'col1', 'type': 'STRING'
-}]
-
+BQ_TABLE_SCHEMA = [
+    bigquery.SchemaField('video_uuid', 'STRING'),
+    bigquery.SchemaField('frame_uuid', 'STRING'),
+    bigquery.SchemaField('frame_timestamp', 'STRING'),
+    bigquery.SchemaField('embeddings', 'RECORD', mode='REPEATED', fields=[
+        bigquery.SchemaField('value', 'FLOAT64')
+    ]),
+]
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
     """Downloads and parses the specified imagefile in a given bucket"""
@@ -63,25 +67,24 @@ def on_upload(event: dict, context):
     pass
 
 if __name__ == '__main__':
-    image = Image.open('./video-encoder/clip.png')
+    image = Image.open('./clip.png')
 
     # encode using model
     encoded_image = encode_image(image)
 
     # setup export data structure
     features = {}
-    features['frame_embeddings'] = encoded_image
+    features['embeddings'] = [{ "value": value } for value in encoded_image]
     features['frame_uuid'] = str(uuid())
-    
-    # emulate future of specying where in video seq frame is picked up
     features['video_uuid'] = str(uuid())
-    features['video_section_start'] = datetime.now().isoformat()
-    features['video_section_stop'] = datetime.now().isoformat()
+    features['frame_timestamp'] = datetime.now().isoformat()
 
-    # export
-    bq = bigquery.Client(project=GCP_PROJECT_ID, credentials=GCP_CREDENTIALS)
-    """
-    bq.insert_rows(
-        BQ_
-    )
-    """
+    rows = [
+        features
+    ]
+
+    bq = bigquery.Client.from_service_account_json(GCP_CREDENTIALS)
+    errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
+    if errors:
+        print(errors)
+        raise Exception('Errors occured when writing to BQ')
