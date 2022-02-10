@@ -10,18 +10,22 @@ from google.cloud import storage, bigquery
 log = logging.getLogger(__name__)
 
 # Settings
-GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
-GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", './creds/secret.json')
-BQ_DATASET_ID = os.getenv('BQ_DATASET_ID', "vizir_development")
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", "./creds/secret.json")
+BQ_DATASET_ID = os.getenv("BQ_DATASET_ID", "vizir_development")
 BQ_TABLE_ID = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
 BQ_TABLE_SCHEMA = [
-    bigquery.SchemaField('video_uuid', 'STRING'),
-    bigquery.SchemaField('frame_uuid', 'STRING'),
-    bigquery.SchemaField('frame_timestamp', 'STRING'),
-    bigquery.SchemaField('embeddings', 'RECORD', mode='REPEATED', fields=[
-        bigquery.SchemaField('value', 'FLOAT64')
-    ]),
+    bigquery.SchemaField("video_uuid", "STRING"),
+    bigquery.SchemaField("frame_uuid", "STRING"),
+    bigquery.SchemaField("frame_timestamp", "STRING"),
+    bigquery.SchemaField(
+        "embeddings",
+        "RECORD",
+        mode="REPEATED",
+        fields=[bigquery.SchemaField("value", "FLOAT64")],
+    ),
 ]
+
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
     """Downloads and parses the specified imagefile in a given bucket"""
@@ -33,11 +37,14 @@ def get_uploaded_image(bucketname: str, filename: str) -> Image:
         with blob.download_as_bytes as bytes:
             return Image.open(bytes)
     else:
-        log.error("no file found of name %s in bucket %s, exiting..." % (filename, bucketname))
+        log.error(
+            "no file found of name %s in bucket %s, exiting..." % (filename, bucketname)
+        )
         exit()
 
+
 def generate_image_embeddings(loaded_image: Image):
-    """Encodes an image """
+    """Encodes an image"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
     collapsed_image = preprocess(loaded_image).unsqueeze(0).to(device)
@@ -45,22 +52,24 @@ def generate_image_embeddings(loaded_image: Image):
         image_features = model.encode_image(collapsed_image).tolist()[0]
     return image_features
 
+
 def prepare_feature_export(encoded_image: list) -> list:
     """Returns BQ exportable list of image encodings as a list of rows"""
     features = {}
-    features['embeddings'] = [{ "value": value } for value in encoded_image]
-    features['frame_uuid'] = str(uuid())
-    features['video_uuid'] = str(uuid())
-    features['frame_timestamp'] = datetime.now().isoformat()
-    
+    features["embeddings"] = [{"value": value} for value in encoded_image]
+    features["frame_uuid"] = str(uuid())
+    features["video_uuid"] = str(uuid())
+    features["frame_timestamp"] = datetime.now().isoformat()
+
     return [features]
+
 
 def on_upload(event: dict, context):
     """Responds to movie clip uploads to GCP buckets and encodes the contents.
-       The encoded content is exported to BigQuery were it enables semantic search on frames.
+    The encoded content is exported to BigQuery were it enables semantic search on frames.
     """
-    bucketname = event.get('bucket')
-    filename = event.get('name')
+    bucketname = event.get("bucket")
+    filename = event.get("name")
 
     # download and process image into bq exportable rows
     image = get_uploaded_image(bucketname, filename)
@@ -72,13 +81,14 @@ def on_upload(event: dict, context):
     errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
     if errors:
         print(errors)
-        raise Exception('Errors occured when writing to BQ')
+        raise Exception("Errors occured when writing to BQ")
     else:
-        print(f'bq write successful.')
+        print(f"bq write successful.")
     pass
 
-if __name__ == '__main__':
-    image = Image.open('./clip.png')
+
+if __name__ == "__main__":
+    image = Image.open("./clip.png")
 
     # encode using model and process features into exportables
     encoded_image = generate_image_embeddings(image)
@@ -89,6 +99,6 @@ if __name__ == '__main__':
     errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
     if errors:
         print(errors)
-        raise Exception('Errors occured when writing to BQ')
+        raise Exception("Errors occured when writing to BQ")
     else:
-        print(f'bq write successful.')
+        print(f"bq write successful.")
