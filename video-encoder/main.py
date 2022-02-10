@@ -3,21 +3,21 @@ import clip
 import torch
 import logging
 from PIL import Image
-from pandas import DataFrame
 from datetime import datetime
 from uuid import uuid4 as uuid
-from numpy import array, ndarray
-from google.cloud import storage
+from google.cloud import storage, bigquery
 
 log = logging.getLogger(__name__)
 
-# consts
-PROJECT_ID = os.getenv('GCP_PROJECT_ID')
-CREDENTIALS = os.getenv("GCP_ACCESS_KEY_PATH", './creds/secret.json')
-BQ_TABLE__NAME = os.getenv('GCP_BQ_TABLE_NAME')
+# Settings
+GCP_PROJECT_ID = os.getenv('GCP_PROJECT_ID')
+GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", './creds/secret.json')
+BQ_DATASET_ID = os.getenv('BQ_DATASET_ID', "vizir_development")
+BQ_TABLE_ID = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
 BQ_TABLE_SCHEMA = [{
     'name': 'col1', 'type': 'STRING'
 }]
+
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
     """Downloads and parses the specified imagefile in a given bucket"""
@@ -32,7 +32,7 @@ def get_uploaded_image(bucketname: str, filename: str) -> Image:
         log.error("no file found of name %s in bucket %s, exiting..." % (filename, bucketname))
         exit()
 
-def encode_image(loaded_image: Image) -> ndarray:
+def encode_image(loaded_image: Image):
     """Encodes an image """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
@@ -52,20 +52,15 @@ def on_upload(event: dict, context):
     # encode using model
     encoded_image = encode_image(image)
     
-    # assemble output dataframe and ship to BigQuery
-    features = { f'f{index}': feature for index, feature in enumerate(encoded_image, 1) }
+    # setup export data structure
+    features = {}
+    features['frame_embeddings'] = encoded_image
     features['frame_uuid'] = str(uuid())
-    features['resource_uuid'] = str(uuid())
-    features['timestamp_start'] = datetime.now().isoformat()
-    features['timestamp_stop'] = datetime.now().isoformat()
-
-    # df constructor requires iterable input in each column
-    for key in features:
-        features[key] = [features[key]]
-
-    df = DataFrame(index=features['frame_uuid'],data=features)
-    df.to_gbq()
+    features['video_uuid'] = str(uuid())
+    features['video_section_start'] = datetime.now().isoformat()
+    features['video_section_stop'] = datetime.now().isoformat()
     
+    pass
 
 if __name__ == '__main__':
     image = Image.open('./video-encoder/clip.png')
@@ -73,18 +68,20 @@ if __name__ == '__main__':
     # encode using model
     encoded_image = encode_image(image)
 
-    # setup export via df
-    features = { f'f{index}': feature for index, feature in enumerate(encoded_image.tolist()[0], 1) }
+    # setup export data structure
+    features = {}
+    features['frame_embeddings'] = encoded_image
     features['frame_uuid'] = str(uuid())
     
     # emulate future of specying where in video seq frame is picked up
-    features['resource_uuid'] = str(uuid())
-    features['timestamp_start'] = datetime.now().isoformat()
-    features['timestamp_stop'] = datetime.now().isoformat()
+    features['video_uuid'] = str(uuid())
+    features['video_section_start'] = datetime.now().isoformat()
+    features['video_section_stop'] = datetime.now().isoformat()
 
-    # df constructor requires iterable for column values (just for now when doing images not video)
-    for key in features:
-        features[key] = [features[key]]
-
-    df = DataFrame(index=features['frame_uuid'],data=features)
-    df.to_gbq()
+    # export
+    bq = bigquery.Client(project=GCP_PROJECT_ID, credentials=GCP_CREDENTIALS)
+    """
+    bq.insert_rows(
+        BQ_
+    )
+    """
