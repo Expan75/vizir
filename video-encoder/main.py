@@ -95,5 +95,5 @@ if __name__ == "__main__":
         'name': 'clip.png' 
     }
 
-    # manually invoke /w fake event (requires file to exit)
+    # manually invoke /w fake event (requires file to exist in bucket!)
     on_upload(event, context)
