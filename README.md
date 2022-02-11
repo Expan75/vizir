@@ -19,7 +19,7 @@ Note that this section will change heavily after introducing Terraform and GitHu
 
 ```console
 gcloud functions deploy hello_gcs \
---runtime python37 \
+--runtime python39 \
 --trigger-resource YOUR_TRIGGER_BUCKET_NAME \
 --trigger-event google.storage.object.finalize
 ```

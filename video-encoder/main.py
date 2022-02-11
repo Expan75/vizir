@@ -2,6 +2,7 @@ import os
 import clip
 import torch
 import logging
+from io import BytesIO
 from PIL import Image
 from datetime import datetime
 from uuid import uuid4 as uuid
@@ -29,13 +30,13 @@ BQ_TABLE_SCHEMA = [
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
     """Downloads and parses the specified imagefile in a given bucket"""
-    client = storage.Client()
+    client = storage.Client.from_service_account_json(GCP_CREDENTIALS)
     bucket = client.bucket(bucketname)
     blob = bucket.blob(filename)
 
     if blob.exists():
-        with blob.download_as_bytes as bytes:
-            return Image.open(bytes)
+        raw_image = BytesIO(blob.download_as_bytes())
+        return Image.open(raw_image)
     else:
         log.error(
             "no file found of name %s in bucket %s, exiting..." % (filename, bucketname)
@@ -80,25 +81,19 @@ def on_upload(event: dict, context):
     bq = bigquery.Client.from_service_account_json(GCP_CREDENTIALS)
     errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
     if errors:
-        print(errors)
+        log.error(errors)
         raise Exception("Errors occured when writing to BQ")
     else:
-        print(f"bq write successful.")
+        log.info(f"bq write successful.")
     pass
 
 
 if __name__ == "__main__":
-    image = Image.open("./clip.png")
 
-    # encode using model and process features into exportables
-    encoded_image = generate_image_embeddings(image)
-    rows = prepare_feature_export(encoded_image)
+    context, event = {}, {
+        'bucket': 'vizir-media-uploads',
+        'name': 'clip.png' 
+    }
 
-    # wrte to BigQuery
-    bq = bigquery.Client.from_service_account_json(GCP_CREDENTIALS)
-    errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
-    if errors:
-        print(errors)
-        raise Exception("Errors occured when writing to BQ")
-    else:
-        print(f"bq write successful.")
+    # manually invoke /w fake event (requires file to exit)
+    on_upload(event, context)
