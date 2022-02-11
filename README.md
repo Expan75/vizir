@@ -18,10 +18,9 @@ Note that this section will change heavily after introducing Terraform and GitHu
 ### Deploy file upload triggerd video encoder
 
 ```console
-gcloud functions deploy hello_gcs \
---runtime python39 \
---trigger-resource YOUR_TRIGGER_BUCKET_NAME \
---trigger-event google.storage.object.finalize
+
+cd ./video-encoder
+gcloud functions deploy video-encoder-dev --runtime python37 --trigger-resource vizir-media-uploads --trigger-event google.storage.object.finalize --entry-point on_upload
 ```
 
 ### Deploy HTTP triggered query encoder

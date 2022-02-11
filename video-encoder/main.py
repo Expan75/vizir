@@ -38,7 +38,7 @@ def get_uploaded_image(bucketname: str, filename: str) -> Image:
         raw_image = BytesIO(blob.download_as_bytes())
         return Image.open(raw_image)
     else:
-        log.error(
+        print(
             "no file found of name %s in bucket %s, exiting..." % (filename, bucketname)
         )
         exit()
@@ -81,10 +81,10 @@ def on_upload(event: dict, context):
     bq = bigquery.Client.from_service_account_json(GCP_CREDENTIALS)
     errors = bq.insert_rows_json(BQ_TABLE_ID, rows)
     if errors:
-        log.error(errors)
+        print(errors)
         raise Exception("Errors occured when writing to BQ")
     else:
-        log.info(f"bq write successful.")
+        print(f"bq write successful.")
     pass
 
 
