@@ -20,7 +20,7 @@ Note that this section will change heavily after introducing Terraform and GitHu
 ```console
 
 cd ./video-encoder
-gcloud functions deploy video-encoder-dev --runtime python37 --trigger-resource vizir-media-uploads --trigger-event google.storage.object.finalize --entry-point on_upload
+gcloud functions deploy video-encoder-dev --runtime python37 --trigger-resource vizir-media-uploads --trigger-event google.storage.object.finalize --entry-point on_upload --memory 2048
 ```
 
 ### Deploy HTTP triggered query encoder
