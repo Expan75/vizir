@@ -5,11 +5,7 @@ import functions_framework
 def index(request):
     if request.method == "POST":
         query = request.form.get("query") # no validation; spooky stuff
-        recommendations = [
-            { "title": "item1" },
-            { "title": "item2" },
-            { "title": "item3" },
-        ]
+        recommendations = [{ "title": f"item{n}" } for n in range(0,50)]
         return render_template(
             "results.html", 
             title="Result | Vizir",
