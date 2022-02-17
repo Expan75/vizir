@@ -8,10 +8,10 @@ from flask import render_template, abort
 log = logging.getLogger(__name__)
 
 # Settings
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+GCP_PROJECT_ID  = os.getenv("GCP_PROJECT_ID")
 GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", "./creds/secret.json")
-BQ_DATASET_ID = os.getenv("BQ_DATASET_ID", "vizir_development")
-BQ_TABLE_ID = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
+BQ_DATASET_ID   = os.getenv("BQ_DATASET_ID", "vizir_development")
+BQ_TABLE_ID     = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
 
 @functions_framework.http
 def index(request):
