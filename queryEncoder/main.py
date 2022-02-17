@@ -16,15 +16,16 @@ BQ_TABLE_ID     = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
 @functions_framework.http
 def index(request):
     if request.method == "POST":
+        print("post triggered")
         query = request.form.get("query") # no validation; spooky stuff
-        recommendations = search.by_string(query)
+        recs = search.by_string(query)
         return render_template(
             "results.html", 
             title="Result | Vizir",
-            recommendations=recommendations,
+            recommendations=[],
             query=query
         )
     elif request.method == "GET":
-        return render_template("landing.html", title="Search | Vizir")
+        return render_template("landing.html", title="Search | Vizir", url=request.url)
     else:
         abort(404)
