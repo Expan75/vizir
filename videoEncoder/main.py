@@ -27,6 +27,10 @@ BQ_TABLE_SCHEMA = [
     ),
 ]
 
+# Ensure model load only runs on cold start, see https://cloud.google.com/functions/docs/concepts/exec
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
+
 
 def get_uploaded_image(bucketname: str, filename: str) -> Image:
     """Downloads and parses the specified imagefile in a given bucket"""
@@ -46,8 +50,6 @@ def get_uploaded_image(bucketname: str, filename: str) -> Image:
 
 def generate_image_embeddings(loaded_image: Image):
     """Encodes an image"""
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model, preprocess = clip.load("ViT-B/32", device=device)
     collapsed_image = preprocess(loaded_image).unsqueeze(0).to(device)
     with torch.no_grad():
         image_features = model.encode_image(collapsed_image).tolist()[0]

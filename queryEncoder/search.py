@@ -10,6 +10,7 @@ GCP_CREDENTIALS = os.getenv("GCP_CREDENTIALS", "./creds/secret.json")
 BQ_DATASET_ID = os.getenv("BQ_DATASET_ID", "vizir_development")
 BQ_TABLE_ID = f"{GCP_PROJECT_ID}.{BQ_DATASET_ID}.video_embeddings"
 
+# TODO: the query should include frame metadata and be neatly organised
 RECS_QUERY = f""" 
   WITH et as (SELECT Array(SELECT embeddings.value
   FROM {BQ_TABLE_ID} as ve
@@ -18,10 +19,13 @@ RECS_QUERY = f"""
   SELECT * FROM et;
 """
 
+# Ensure model load only runs on cold start, see https://cloud.google.com/functions/docs/concepts/exec
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
+
+
 def generate_query_embeddings(query: str) -> list:
   """Encodes a query strings into embeddings"""
-  device = "cuda" if torch.cuda.is_available() else "cpu"
-  model, preprocess = clip.load("ViT-B/32", device=device)
   with torch.no_grad():
     text_inputs = torch.cat([clip.tokenize(f"{query}")]).to(device)
     text_features = model.encode_text(text_inputs).tolist()[0]
@@ -42,7 +46,9 @@ def by_string(query: str) -> list:
 
   # compare /w video embeddings from BQ and return the most relevant
   bq = bigquery.Client.from_service_account_json(GCP_CREDENTIALS)
-  results = bq.query(RECS_QUERY).result()
+  q = RECS_QUERY
+
+  results = bq.query(q).result()
   
   # return slightly restructured results
   return list(results)
